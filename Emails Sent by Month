@@ -1,0 +1,31 @@
+# Emails Sent BY Month
+SELECT
+  sent_month,
+  id_account,
+  --sent_email_cnt,
+  --SUM(sent_email_cnt) OVER (PARTITION BY sent_month) AS total_sent_email,
+  (sent_email_cnt / SUM(sent_email_cnt) OVER (PARTITION BY sent_month)*100) AS sent_msg_percent_from_this_month,
+  MIN(sent_date) AS first_sent_date,
+  MAX(sent_date) AS last_sent_date
+FROM (
+  SELECT
+    id_account,
+    DATE_ADD(s.date, INTERVAL sent_date DAY) AS sent_date,
+    DATE_TRUNC(DATE_ADD(s.date, INTERVAL sent_date DAY), MONTH) AS sent_month,
+    COUNT(id_message) OVER(ORDER BY DATE_TRUNC(DATE_ADD(s.date, INTERVAL sent_date DAY), MONTH)) AS sent_email_cnt,
+  FROM
+    data-analytics-mate.DA.email_sent es
+  JOIN
+    data-analytics-mate.DA.account_session acs
+  ON
+    es.id_account = acs.account_id
+  JOIN
+    data-analytics-mate.DA.session s
+  ON
+    acs.ga_session_id = s.ga_session_id)
+GROUP BY
+  sent_month,
+  id_account,
+  sent_email_cnt
+ORDER BY
+  sent_month
