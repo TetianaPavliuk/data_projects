@@ -1,0 +1,69 @@
+WITH
+  revenue_usd AS (
+  SELECT
+    sp.continent,
+    sum (p.price) AS revenue,
+    SUM(CASE
+        WHEN device='mobile' THEN p.price
+    END
+      ) AS revenue_from_mobile,
+    SUM(CASE
+        WHEN device='desktop' THEN p.price
+    END
+      ) AS revenue_from_desktop,
+  FROM
+    `DA.order` o
+  JOIN
+    `DA.product` p
+  ON
+    o.item_id=p.item_id
+  JOIN
+    `data-analytics-mate.DA.session_params` sp
+  ON
+    o.ga_session_id=sp.ga_session_id
+  GROUP BY
+    sp.continent ),
+  account_count AS (
+  SELECT
+    sp.continent AS continent,
+    COUNT(a.id) AS account_cnt,
+    COUNT(CASE
+        WHEN is_verified=1 THEN a.id
+    END
+      ) AS verified_account
+  FROM
+    `DA.session_params` sp
+  JOIN
+    `DA.account_session` acs
+  ON
+    sp.ga_session_id=acs.ga_session_id
+  JOIN
+    `DA.account` a
+  ON
+    acs.account_id=a.id
+  GROUP BY
+    sp.continent ),
+session_count as(
+  SELECT continent,
+       count(ga_session_id) as session_cnt
+ FROM `data-analytics-mate.DA.session_params`
+ group by continent
+)
+SELECT
+  account_count.continent,
+  ROUND(revenue_usd.revenue,2) AS revenue,
+  ROUND(revenue_usd.revenue_from_mobile,2) AS revenue_from_mobile,
+  ROUND(revenue_usd.revenue_from_desktop,2) AS revenue_from_desktop,
+  ROUND(revenue_usd.revenue_from_mobile *100 / revenue_usd.revenue,2) AS percent_mobil_revenue_from_total,
+  ROUND(revenue_usd.revenue_from_desktop *100 / revenue_usd.revenue,2) AS percent_desktop_revenue_from_total,
+  account_count.account_cnt,
+  account_count.verified_account,
+  session_count.session_cnt
+FROM
+  account_count
+LEFT JOIN
+  revenue_usd
+ON
+  account_count.continent=revenue_usd.continent
+join session_count
+on account_count.continent=session_count.continent
