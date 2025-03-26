@@ -1,0 +1,42 @@
+SELECT
+  EXTRACT (year
+  FROM
+    date_new) AS year,
+  EXTRACT (month
+  FROM
+    date_new) AS month,
+  SUM(revenue) AS revenue,
+  SUM(cost) AS cost
+FROM (
+  SELECT
+    SUM(p.price) AS revenue,
+    0 AS cost,
+    s.date AS date_new
+  FROM
+    `DA.product` p
+  JOIN
+    `DA.order` o
+  ON
+    p.item_id=o.item_id
+  JOIN
+    `DA.session` s
+  ON
+    o.ga_session_id=s.ga_session_id
+  GROUP BY
+    s.date
+  UNION ALL
+  SELECT
+    0 AS revenue,
+    SUM(cost) AS cost,
+    psc.date AS date_new
+  FROM
+    `DA.paid_search_cost` psc
+  GROUP BY
+    psc.date ) AS revenue_cost
+GROUP BY
+  EXTRACT (year
+  FROM
+    date_new),
+  EXTRACT (month
+  FROM
+    date_new)
